@@ -24,6 +24,9 @@ def create_app():
     from routes.dashboard import dashboard_bp
     app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
 
+    from routes.upload import upload_bp
+    app.register_blueprint(upload_bp, url_prefix="/api")
+
     @app.route("/")
     def home():
         return {
