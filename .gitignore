@@ -18,3 +18,7 @@ node_modules/
 # Build
 dist/
 build/
+backend/uploads/*
+test.py
+test.c
+test.txt
