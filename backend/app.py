@@ -1,8 +1,13 @@
+from models.user import User
+from models.project import Project
+from models.review import Review
+from models.review_finding import ReviewFinding
 from flask import Flask
 from flask_cors import CORS
 
 from config import Config
 from extensions import db, jwt
+
 
 def create_app():
     app = Flask(__name__)
@@ -15,6 +20,9 @@ def create_app():
 
     from routes.auth import auth_bp
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
+
+    from routes.dashboard import dashboard_bp
+    app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
 
     @app.route("/")
     def home():
