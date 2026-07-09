@@ -27,6 +27,9 @@ def create_app():
     from routes.upload import upload_bp
     app.register_blueprint(upload_bp, url_prefix="/api")
 
+    from routes.analysis import analysis_bp
+    app.register_blueprint(analysis_bp, url_prefix="/api")
+
     @app.route("/")
     def home():
         return {
@@ -43,4 +46,3 @@ app = create_app()
 
 if __name__ == "__main__":
     app.run(debug=True)
-    

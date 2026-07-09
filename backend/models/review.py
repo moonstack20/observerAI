@@ -9,13 +9,14 @@ class Review(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey("projects.id"), nullable=False)
     filename = db.Column(db.String(255), nullable=False)
     file_path = db.Column(db.String(500), nullable=False)
-    language = db.Column(db.String(20), nullable=False)  # "python" or "c"
+    language = db.Column(db.String(20), nullable=False)
     quality_score = db.Column(db.Float, nullable=True)
+    analysis_data = db.Column(db.Text, nullable=True)
     status = db.Column(db.String(50), default="pending")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    def to_dict(self):
-        return {
+    def to_dict(self, include_analysis=False):
+        data = {
             "id": self.id,
             "project_id": self.project_id,
             "filename": self.filename,
@@ -24,4 +25,8 @@ class Review(db.Model):
             "status": self.status,
             "created_at": self.created_at.isoformat(),
         }
+        if include_analysis and self.analysis_data:
+            import json
+            data["analysis"] = json.loads(self.analysis_data)
+        return data
     
