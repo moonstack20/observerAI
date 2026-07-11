@@ -4,7 +4,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from extensions import db
 from models.project import Project
 from models.review import Review
-from services.upload_service import is_allowed_file, detect_language, save_uploaded_file
+from services.upload_service import validate_file, detect_language, save_uploaded_file
 
 upload_bp = Blueprint("upload", __name__)
 
@@ -22,12 +22,12 @@ def upload_file():
     if file.filename == "":
         return jsonify({"error": "No file selected"}), 400
 
-    if not is_allowed_file(file.filename):
-        return jsonify({"error": "Only .py, .c, .h files are allowed"}), 400
+    is_valid, error_message = validate_file(file)
+    if not is_valid:
+        return jsonify({"error": error_message}), 400
 
     language = detect_language(file.filename)
 
-    # Find or create a default project for this user
     project = Project.query.filter_by(user_id=user_id).first()
     if not project:
         project = Project(user_id=user_id, name="My Project", description="Default project")

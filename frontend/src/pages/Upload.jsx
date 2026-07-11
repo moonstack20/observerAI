@@ -78,20 +78,13 @@ function Upload() {
       });
 
       const reviewId = uploadRes.data.review.id;
-      const language = uploadRes.data.review.language;
-
       setUploading(false);
+      setAnalyzing(true);
 
-      if (language === "python") {
-        setAnalyzing(true);
-        const analyzeRes = await api.post(`/analyze/${reviewId}`, {}, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setAnalysis(analyzeRes.data.review);
-      } else {
-        setError("C analysis isn't available yet (coming Day 6)");
-      }
-
+      const analyzeRes = await api.post(`/analyze/${reviewId}`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setAnalysis(analyzeRes.data.review);
       setFile(null);
     } catch (err) {
       setError(err.response?.data?.error || "Something went wrong");
@@ -161,49 +154,10 @@ function Upload() {
             Overall Score: {analysis.quality_score} / 10
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-            <div style={cardStyle}>
-              <h4>📋 Code Quality (Pylint)</h4>
-              <p>Score: {analysis.analysis.pylint.score} / 10</p>
-              <p>Total Issues: {analysis.analysis.pylint.total_issues}</p>
-              <p>Warnings: {analysis.analysis.pylint.warnings}</p>
-              <p>Conventions: {analysis.analysis.pylint.conventions}</p>
-            </div>
-
-            <div style={cardStyle}>
-              <h4>🔒 Security (Bandit)</h4>
-              <p>Total Issues: {analysis.analysis.bandit.total_issues}</p>
-              <p style={{ color: "#dc2626" }}>High: {analysis.analysis.bandit.high}</p>
-              <p style={{ color: "#ca8a04" }}>Medium: {analysis.analysis.bandit.medium}</p>
-              <p style={{ color: "#16a34a" }}>Low: {analysis.analysis.bandit.low}</p>
-            </div>
-
-            <div style={cardStyle}>
-              <h4>🧩 Complexity (Radon)</h4>
-              <p>Total Functions: {analysis.analysis.radon.total_functions}</p>
-              <p>Avg Complexity: {analysis.analysis.radon.avg_complexity}</p>
-            </div>
-
-            <div style={cardStyle}>
-              <h4>🛠 Maintainability</h4>
-              <p>Index: {analysis.analysis.radon.maintainability_index ?? "N/A"} / 100</p>
-            </div>
-          </div>
-
-          {analysis.analysis.bandit.issues.length > 0 && (
-            <div style={{ marginTop: "20px" }}>
-              <h4>Security Issues Found:</h4>
-              {analysis.analysis.bandit.issues.map((issue, i) => (
-                <div key={i} style={{
-                  padding: "10px",
-                  borderLeft: `4px solid ${issue.severity === "HIGH" ? "#dc2626" : issue.severity === "MEDIUM" ? "#ca8a04" : "#16a34a"}`,
-                  background: "#f9f9f9",
-                  marginBottom: "8px"
-                }}>
-                  <strong>{issue.severity}</strong> (Line {issue.line}): {issue.issue}
-                </div>
-              ))}
-            </div>
+          {analysis.language === "python" ? (
+            <PythonResults data={analysis.analysis} />
+          ) : (
+            <CResults data={analysis.analysis} />
           )}
         </div>
       )}
@@ -211,11 +165,117 @@ function Upload() {
   );
 }
 
-const cardStyle = {
-  padding: "16px",
-  border: "1px solid #ddd",
-  borderRadius: "8px",
-  background: "#fff",
-};
+function PythonResults({ data }) {
+  return (
+    <>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+        <div style={cardStyle}>
+          <h4>📋 Code Quality (Pylint)</h4>
+          <p>Score: {data.pylint.score} / 10</p>
+          <p>Total Issues: {data.pylint.total_issues}</p>
+          <p>Warnings: {data.pylint.warnings}</p>
+          <p>Conventions: {data.pylint.conventions}</p>
+        </div>
 
-export default Upload;
+        <div style={cardStyle}>
+          <h4>🔒 Security (Bandit)</h4>
+          <p>Total Issues: {data.bandit.total_issues}</p>
+          <p style={{ color: "#dc2626" }}>High: {data.bandit.high}</p>
+          <p style={{ color: "#ca8a04" }}>Medium: {data.bandit.medium}</p>
+          <p style={{ color: "#16a34a" }}>Low: {data.bandit.low}</p>
+        </div>
+
+        <div style={cardStyle}>
+          <h4>🧩 Complexity (Radon)</h4>
+          <p>Total Functions: {data.radon.total_functions}</p>
+          <p>Avg Complexity: {data.radon.avg_complexity}</p>
+        </div>
+
+        <div style={cardStyle}>
+          <h4>🛠 Maintainability</h4>
+          <p>Index: {data.radon.maintainability_index ?? "N/A"} / 100</p>
+        </div>
+      </div>
+
+      {data.bandit.issues.length > 0 && (
+        <IssueList title="Security Issues Found:" issues={data.bandit.issues.map(i => ({
+          severity: i.severity, line: i.line, message: i.issue
+        }))} />
+      )}
+    </>
+  );
+}
+
+function CResults({ data }) {
+  return (
+    <>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+        <div style={cardStyle}>
+          <h4>📋 Code Quality (Cppcheck)</h4>
+          <p>Total Issues: {data.cppcheck.total_issues}</p>
+          <p>Errors: {data.cppcheck.errors}</p>
+          <p>Warnings: {data.cppcheck.warnings}</p>
+          <p>Style: {data.cppcheck.style}</p>
+        </div>
+
+        <div style={cardStyle}>
+          <h4>🔒 Security (Flawfinder)</h4>
+          <p>Total Issues: {data.flawfinder.total_issues}</p>
+          <p style={{ color: "#dc2626" }}>High Risk: {data.flawfinder.high_risk}</p>
+          <p style={{ color: "#ca8a04" }}>Medium Risk: {data.flawfinder.medium_risk}</p>
+          <p style={{ color: "#16a34a" }}>Low Risk: {data.flawfinder.low_risk}</p>
+        </div>
+
+        <div style={cardStyle}>
+          <h4>🧩 Complexity (Lizard)</h4>
+          <p>Total Functions: {data.lizard.total_functions}</p>
+          <p>Avg Complexity: {data.lizard.avg_complexity}</p>
+        </div>
+
+        <div style={cardStyle}>
+          <h4>📏 Size</h4>
+          <p>Total Lines: {data.lizard.total_lines}</p>
+        </div>
+      </div>
+
+      {data.flawfinder.issues.length > 0 && (
+        <IssueList
+          title="Security Issues Found:"
+          issues={data.flawfinder.issues.map(i => ({
+            severity: i.risk_level >= 4 ? "HIGH" : i.risk_level >= 2 ? "MEDIUM" : "LOW",
+            line: i.line,
+            message: i.message
+          }))}
+        />
+      )}
+    </>
+  );
+}
+
+function IssueList({ title, issues }) {
+    return (
+      <div style={{ marginTop: "20px" }}>
+        <h4>{title}</h4>
+        {issues.map((issue, i) => (
+          <div key={i} style={{
+            padding: "10px",
+            borderLeft: `4px solid ${issue.severity === "HIGH" ? "#dc2626" : issue.severity === "MEDIUM" ? "#ca8a04" : "#16a34a"}`,
+            background: "#f9f9f9",
+            marginBottom: "8px"
+          }}>
+            <strong>{issue.severity}</strong> (Line {issue.line}): {issue.message}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  
+  const cardStyle = {
+    padding: "16px",
+    border: "1px solid #ddd",
+    borderRadius: "8px",
+    background: "#fff",
+  };
+  
+  export default Upload;
+  

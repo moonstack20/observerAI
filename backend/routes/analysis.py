@@ -1,10 +1,11 @@
 import json
 from flask import Blueprint, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required
 
 from extensions import db
 from models.review import Review
 from services.python_analysis_service import analyze_python_file
+from services.c_analysis_service import analyze_c_file
 
 analysis_bp = Blueprint("analysis", __name__)
 
@@ -17,11 +18,13 @@ def analyze_review(review_id):
     if not review:
         return jsonify({"error": "Review not found"}), 404
 
-    if review.language != "python":
-        return jsonify({"error": "Only Python analysis is available right now"}), 400
-
     try:
-        result = analyze_python_file(review.file_path)
+        if review.language == "python":
+            result = analyze_python_file(review.file_path)
+        elif review.language == "c":
+            result = analyze_c_file(review.file_path)
+        else:
+            return jsonify({"error": "Unsupported language"}), 400
     except Exception as e:
         return jsonify({"error": f"Analysis failed: {str(e)}"}), 500
 
