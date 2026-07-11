@@ -18,13 +18,24 @@ function scoreColor(score) {
 }
 
 function Upload() {
+  const [mode, setMode] = useState("upload"); // "upload" or "paste"
   const [file, setFile] = useState(null);
+  const [pastedCode, setPastedCode] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [analysis, setAnalysis] = useState(null);
+
+  const switchMode = (newMode) => {
+    setMode(newMode);
+    setFile(null);
+    setPastedCode("");
+    setError("");
+    setAnalysis(null);
+    setProgress(0);
+  };
 
   const validateAndSetFile = (selectedFile) => {
     setError("");
@@ -48,6 +59,14 @@ function Upload() {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files[0]) validateAndSetFile(e.dataTransfer.files[0]);
+  };
+
+  const runAnalysis = async (reviewId, token) => {
+    setAnalyzing(true);
+    const analyzeRes = await api.post(`/analyze/${reviewId}`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setAnalysis(analyzeRes.data.review);
   };
 
   const handleUpload = async () => {
@@ -77,15 +96,35 @@ function Upload() {
         },
       });
 
-      const reviewId = uploadRes.data.review.id;
       setUploading(false);
-      setAnalyzing(true);
+      await runAnalysis(uploadRes.data.review.id, token);
+      setFile(null);
+    } catch (err) {
+      setError(err.response?.data?.error || "Something went wrong");
+    } finally {
+      setUploading(false);
+      setAnalyzing(false);
+    }
+  };
 
-      const analyzeRes = await api.post(`/analyze/${reviewId}`, {}, {
+  const handlePasteSubmit = async () => {
+    if (!pastedCode.trim()) {
+      setError("Please paste some code first");
+      return;
+    }
+
+    setError("");
+    setAnalysis(null);
+    setUploading(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      const pasteRes = await api.post("/paste", { code: pastedCode }, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setAnalysis(analyzeRes.data.review);
-      setFile(null);
+
+      setUploading(false);
+      await runAnalysis(pasteRes.data.review.id, token);
     } catch (err) {
       setError(err.response?.data?.error || "Something went wrong");
     } finally {
@@ -97,45 +136,100 @@ function Upload() {
   return (
     <Layout>
       <h2>Upload Code</h2>
-      <p>Upload a Python or C file to get an AI-powered code review.</p>
+      <p>Upload a file or paste code directly to get an AI-powered code review.</p>
 
-      <div
-        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-        onDragLeave={() => setIsDragging(false)}
-        onDrop={handleDrop}
-        style={{
-          border: `2px dashed ${isDragging ? "#4f46e5" : "#ccc"}`,
-          borderRadius: "8px",
-          padding: "40px",
-          textAlign: "center",
-          marginTop: "24px",
-          maxWidth: "500px",
-          background: isDragging ? "#f0f0ff" : "transparent",
-        }}
-      >
-        <p>Drag & drop a .py, .c, or .h file here, or</p>
-        <input type="file" accept=".py,.c,.h" onChange={handleFileChange} />
-
-        {file && (
-          <p style={{ marginTop: "12px" }}>
-            Selected: <strong>{file.name}</strong>{" "}
-            <span style={{ color: "#4f46e5" }}>({detectLanguageLabel(file.name)})</span>
-          </p>
-        )}
-
-        {error && <p style={{ color: "red", marginTop: "8px" }}>{error}</p>}
-
-        {uploading && (
-          <div style={{ marginTop: "16px", background: "#eee", borderRadius: "6px", overflow: "hidden", height: "10px" }}>
-            <div style={{ width: `${progress}%`, background: "#4f46e5", height: "100%", transition: "width 0.2s ease" }} />
-          </div>
-        )}
-
-        <br />
-        <button onClick={handleUpload} disabled={uploading || analyzing} style={{ marginTop: "16px" }}>
-          {uploading ? `Uploading... ${progress}%` : analyzing ? "Analyzing..." : "Upload & Review"}
+      <div style={{ display: "flex", gap: "8px", marginTop: "20px", maxWidth: "500px" }}>
+        <button
+          onClick={() => switchMode("upload")}
+          style={{
+            flex: 1,
+            padding: "10px",
+            background: mode === "upload" ? "#4f46e5" : "#eee",
+            color: mode === "upload" ? "#fff" : "#333",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+          }}
+        >
+          📁 Upload File
+        </button>
+        <button
+          onClick={() => switchMode("paste")}
+          style={{
+            flex: 1,
+            padding: "10px",
+            background: mode === "paste" ? "#4f46e5" : "#eee",
+            color: mode === "paste" ? "#fff" : "#333",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+          }}
+        >
+          📋 Paste Code
         </button>
       </div>
+
+      {mode === "upload" ? (
+        <div
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+          style={{
+            border: `2px dashed ${isDragging ? "#4f46e5" : "#ccc"}`,
+            borderRadius: "8px",
+            padding: "40px",
+            textAlign: "center",
+            marginTop: "16px",
+            maxWidth: "500px",
+            background: isDragging ? "#f0f0ff" : "transparent",
+          }}
+        >
+          <p>Drag & drop a .py, .c, or .h file here, or</p>
+          <input type="file" accept=".py,.c,.h" onChange={handleFileChange} />
+
+          {file && (
+            <p style={{ marginTop: "12px" }}>
+              Selected: <strong>{file.name}</strong>{" "}
+              <span style={{ color: "#4f46e5" }}>({detectLanguageLabel(file.name)})</span>
+            </p>
+          )}
+
+          {uploading && (
+            <div style={{ marginTop: "16px", background: "#eee", borderRadius: "6px", overflow: "hidden", height: "10px" }}>
+              <div style={{ width: `${progress}%`, background: "#4f46e5", height: "100%", transition: "width 0.2s ease" }} />
+            </div>
+          )}
+
+          <br />
+          <button onClick={handleUpload} disabled={uploading || analyzing} style={{ marginTop: "16px" }}>
+            {uploading ? `Uploading... ${progress}%` : analyzing ? "Analyzing..." : "Upload & Review"}
+          </button>
+        </div>
+      ) : (
+        <div style={{ marginTop: "16px", maxWidth: "600px" }}>
+          <textarea
+            value={pastedCode}
+            onChange={(e) => setPastedCode(e.target.value)}
+            placeholder="Paste your Python or C code here..."
+            rows={14}
+            style={{
+              width: "100%",
+              fontFamily: "monospace",
+              fontSize: "13px",
+              padding: "12px",
+              borderRadius: "8px",
+              border: "1px solid #ccc",
+              resize: "vertical",
+            }}
+          />
+          <br />
+          <button onClick={handlePasteSubmit} disabled={uploading || analyzing} style={{ marginTop: "12px" }}>
+            {uploading ? "Submitting..." : analyzing ? "Analyzing..." : "Analyze Code"}
+          </button>
+        </div>
+      )}
+
+      {error && <p style={{ color: "red", marginTop: "12px" }}>{error}</p>}
 
       {analysis && (
         <div style={{ marginTop: "32px", maxWidth: "700px" }}>
@@ -253,29 +347,28 @@ function CResults({ data }) {
 }
 
 function IssueList({ title, issues }) {
-    return (
-      <div style={{ marginTop: "20px" }}>
-        <h4>{title}</h4>
-        {issues.map((issue, i) => (
-          <div key={i} style={{
-            padding: "10px",
-            borderLeft: `4px solid ${issue.severity === "HIGH" ? "#dc2626" : issue.severity === "MEDIUM" ? "#ca8a04" : "#16a34a"}`,
-            background: "#f9f9f9",
-            marginBottom: "8px"
-          }}>
-            <strong>{issue.severity}</strong> (Line {issue.line}): {issue.message}
-          </div>
-        ))}
-      </div>
-    );
-  }
-  
-  const cardStyle = {
-    padding: "16px",
-    border: "1px solid #ddd",
-    borderRadius: "8px",
-    background: "#fff",
-  };
-  
-  export default Upload;
-  
+  return (
+    <div style={{ marginTop: "20px" }}>
+      <h4>{title}</h4>
+      {issues.map((issue, i) => (
+        <div key={i} style={{
+          padding: "10px",
+          borderLeft: `4px solid ${issue.severity === "HIGH" ? "#dc2626" : issue.severity === "MEDIUM" ? "#ca8a04" : "#16a34a"}`,
+          background: "#f9f9f9",
+          marginBottom: "8px"
+        }}>
+          <strong>{issue.severity}</strong> (Line {issue.line}): {issue.message}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const cardStyle = {
+  padding: "16px",
+  border: "1px solid #ddd",
+  borderRadius: "8px",
+  background: "#fff",
+};
+
+export default Upload;

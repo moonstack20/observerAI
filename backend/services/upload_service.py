@@ -57,3 +57,42 @@ def save_uploaded_file(file):
     file.save(file_path)
 
     return file_path, unique_name
+
+def detect_language_from_content(content):
+    c_signals = ["#include", "int main(", "printf(", "malloc(", "->", "typedef struct"]
+    python_signals = ["def ", "import ", "print(", "self.", "elif ", "__init__"]
+
+    c_score = sum(1 for signal in c_signals if signal in content)
+    python_score = sum(1 for signal in python_signals if signal in content)
+
+    if c_score == 0 and python_score == 0:
+        return None
+    return "c" if c_score > python_score else "python"
+def validate_pasted_code(content):
+    """Returns (is_valid, error_message)"""
+    if not content or not content.strip():
+        return False, "Code cannot be empty"
+
+    size = len(content.encode("utf-8"))
+    if size > MAX_FILE_SIZE:
+        return False, f"Code exceeds maximum size of 5 MB (got {round(size / 1024 / 1024, 2)} MB)"
+
+    line_count = content.count("\n") + 1
+    if line_count > MAX_LINES:
+        return False, f"Code exceeds maximum of {MAX_LINES} lines (got {line_count} lines)"
+
+    return True, None
+
+
+def save_pasted_code(content, language):
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER)
+
+    ext = ".py" if language == "python" else ".c"
+    unique_name = f"{uuid.uuid4().hex}{ext}"
+    file_path = os.path.join(UPLOAD_FOLDER, unique_name)
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    return file_path, unique_name
