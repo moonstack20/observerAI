@@ -253,6 +253,7 @@ function Upload() {
           ) : (
             <CResults data={analysis.analysis} />
           )}
+          <AIReview ai={analysis.analysis.ai_review} />
         </div>
       )}
     </Layout>
@@ -345,6 +346,81 @@ function CResults({ data }) {
     </>
   );
 }
+
+function AIReview({ ai }) {
+    if (!ai || ai.error) {
+      return (
+        <div style={{ marginTop: "24px", padding: "16px", background: "#fff3cd", borderRadius: "8px" }}>
+          <p>AI review unavailable{ai?.error ? `: ${ai.error}` : ""}</p>
+        </div>
+      );
+    }
+  
+    const categories = Object.entries(ai).filter(([key, val]) =>
+      Array.isArray(val) && val.length > 0 && key !== "best_practices" && key !== "refactoring_suggestions"
+    );
+  
+    return (
+      <div style={{ marginTop: "32px" }}>
+        <h3>🤖 AI Code Review</h3>
+  
+        <div style={{
+          padding: "16px",
+          background: "#f0f0ff",
+          borderRadius: "8px",
+          marginBottom: "16px"
+        }}>
+          <p style={{ margin: 0 }}><strong>AI Score:</strong> {ai.overall_ai_score} / 10</p>
+          <p style={{ marginTop: "8px", marginBottom: 0 }}>{ai.summary}</p>
+        </div>
+  
+        {categories.map(([key, items]) => (
+          <div key={key} style={{ marginBottom: "16px" }}>
+            <h4 style={{ textTransform: "capitalize" }}>{key.replace(/_/g, " ")}</h4>
+            {items.map((item, i) => (
+              <div key={i} style={{
+                padding: "10px",
+                borderLeft: `4px solid ${item.severity === "high" ? "#dc2626" : item.severity === "medium" ? "#ca8a04" : "#16a34a"}`,
+                background: "#f9f9f9",
+                marginBottom: "8px"
+              }}>
+                {item.line && <strong>Line {item.line}: </strong>}
+                {item.description}
+                {item.severity && <span style={{ marginLeft: "8px", fontSize: "12px", opacity: 0.7 }}>({item.severity})</span>}
+              </div>
+            ))}
+          </div>
+        ))}
+  
+        {ai.refactoring_suggestions && ai.refactoring_suggestions.length > 0 && (
+          <div style={{ marginBottom: "16px" }}>
+            <h4>💡 Refactoring Suggestions</h4>
+            {ai.refactoring_suggestions.map((item, i) => (
+              <div key={i} style={{ padding: "10px", background: "#f9f9f9", marginBottom: "8px", borderRadius: "6px" }}>
+                <p style={{ margin: 0 }}>{item.description}</p>
+                {item.suggestion && (
+                  <pre style={{ background: "#eee", padding: "8px", borderRadius: "4px", marginTop: "6px", fontSize: "12px", overflowX: "auto" }}>
+                    {item.suggestion}
+                  </pre>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+  
+        {ai.best_practices && ai.best_practices.length > 0 && (
+          <div>
+            <h4>✅ Best Practices</h4>
+            {ai.best_practices.map((item, i) => (
+              <div key={i} style={{ padding: "10px", background: "#f9f9f9", marginBottom: "8px", borderRadius: "6px" }}>
+                {item.description}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
 function IssueList({ title, issues }) {
   return (

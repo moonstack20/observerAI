@@ -6,6 +6,7 @@ from extensions import db
 from models.review import Review
 from services.python_analysis_service import analyze_python_file
 from services.c_analysis_service import analyze_c_file
+from services.ai_review_service import get_ai_review
 
 analysis_bp = Blueprint("analysis", __name__)
 
@@ -27,6 +28,12 @@ def analyze_review(review_id):
             return jsonify({"error": "Unsupported language"}), 400
     except Exception as e:
         return jsonify({"error": f"Analysis failed: {str(e)}"}), 500
+
+    with open(review.file_path, "r", encoding="utf-8", errors="ignore") as f:
+        code_content = f.read()
+
+    ai_review = get_ai_review(code_content, review.language)
+    result["ai_review"] = ai_review
 
     review.quality_score = result["overall_score"]
     review.analysis_data = json.dumps(result)
