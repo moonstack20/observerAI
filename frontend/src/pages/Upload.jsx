@@ -28,6 +28,12 @@ function Upload() {
   const [analyzing, setAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [analysis, setAnalysis] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const switchMode = (newMode) => {
     setMode(newMode);
@@ -89,8 +95,11 @@ function Upload() {
       setUploading(false);
       await runAnalysis(uploadRes.data.review.id, token);
       setFile(null);
+      showToast("Analysis complete! Your report is ready.", "success");
     } catch (err) {
-      setError(err.response?.data?.error || "Something went wrong");
+      const msg = err.response?.data?.error || "Something went wrong";
+      setError(msg);
+      showToast(msg, "error");
     } finally {
       setUploading(false);
       setAnalyzing(false);
@@ -112,8 +121,11 @@ function Upload() {
       });
       setUploading(false);
       await runAnalysis(pasteRes.data.review.id, token);
+      showToast("Analysis complete! Your report is ready.", "success");
     } catch (err) {
-      setError(err.response?.data?.error || "Something went wrong");
+      const msg = err.response?.data?.error || "Something went wrong";
+      setError(msg);
+      showToast(msg, "error");
     } finally {
       setUploading(false);
       setAnalyzing(false);
@@ -122,6 +134,8 @@ function Upload() {
 
   return (
     <Layout>
+      <Toast toast={toast} />
+
       <h2 style={{ margin: 0 }}>Upload Code</h2>
       <p style={{ color: "var(--text-muted)" }}>Upload a file or paste code directly to get an AI-powered code review.</p>
 
@@ -257,6 +271,24 @@ function AnalyzingIndicator() {
   );
 }
 
+function Toast({ toast }) {
+    if (!toast) return null;
+    const isSuccess = toast.type === "success";
+    const accent = isSuccess ? "var(--success)" : "var(--error)";
+    return (
+      <div className="fade-in" style={{
+        position: "fixed", top: "20px", right: "20px", zIndex: 1000,
+        padding: "14px 20px", borderRadius: "10px",
+        background: "#fff",
+        borderLeft: `4px solid ${accent}`,
+        color: "#1E293B", fontWeight: 500, fontSize: "14px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+      }}>
+        {toast.message}
+      </div>
+    );
+  }
+  
 function MetricCard({ icon: Icon, title, children }) {
   return (
     <div style={{
