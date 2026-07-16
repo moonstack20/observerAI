@@ -93,3 +93,47 @@ def paste_code():
         "message": "Code submitted successfully",
         "review": review.to_dict()
     }),201
+@upload_bp.route("/reviews", methods=["GET"])
+@jwt_required()
+def list_reviews():
+    user_id = get_jwt_identity()
+
+    projects = Project.query.filter_by(user_id=user_id).all()
+    project_ids = [p.id for p in projects]
+
+    if not project_ids:
+        return jsonify({"reviews": []}), 200
+
+    query = Review.query.filter(Review.project_id.in_(project_ids))
+
+    language = request.args.get("language")
+    if language in ("python", "c"):
+        query = query.filter(Review.language == language)
+
+    search = request.args.get("search")
+    if search:
+        query = query.filter(Review.filename.ilike(f"%{search}%"))
+
+    reviews = query.order_by(Review.created_at.desc()).all()
+
+    return jsonify({"reviews": [r.to_dict() for r in reviews]}), 200
+
+
+@upload_bp.route("/review/<int:review_id>", methods=["DELETE"])
+@jwt_required()
+def delete_review(review_id):
+    user_id = get_jwt_identity()
+
+    review = Review.query.get(review_id)
+    if not review:
+        return jsonify({"error": "Review not found"}), 404
+
+    project = Project.query.get(review.project_id)
+    if not project or project.user_id != int(user_id):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    db.session.delete(review)
+    db.session.commit()
+
+    return jsonify({"message": "Review deleted"}), 200
+
