@@ -3,11 +3,11 @@ import Sidebar from "./Sidebar";
 
 function Layout({ children }) {
   return (
-    <div>
+    <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
       <Navbar />
       <div style={{ display: "flex" }}>
         <Sidebar />
-        <div style={{ flex: 1, padding: "24px" }}>
+        <div style={{ flex: 1, padding: "28px", color: "var(--text)" }}>
           {children}
         </div>
       </div>

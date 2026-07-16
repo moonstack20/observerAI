@@ -4,7 +4,7 @@ function History() {
   return (
     <Layout>
       <h2>Review History</h2>
-      <p>Coming soon (Day 10 work).</p>
+      <p style={{ color: "var(--text-muted)" }}>Coming soon (Day 10 work).</p>
     </Layout>
   );
 }
