@@ -22,3 +22,5 @@ backend/uploads/*
 test.py
 test.c
 test.txt
+test_report.pdf
+test_report.md
