@@ -22,7 +22,7 @@ function Navbar() {
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
         <Sparkles size={20} color="var(--primary)" />
-        <h3 style={{ margin: 0, fontWeight: 600 }}>observerAI</h3>
+        <h3 style={{ margin: 0, fontWeight: 600 }}>Observer AI</h3>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
         <span style={{ color: "var(--text-muted)", fontSize: "14px" }}>{user?.name}</span>
@@ -43,3 +43,4 @@ function Navbar() {
 }
 
 export default Navbar;
+

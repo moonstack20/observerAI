@@ -30,6 +30,9 @@ def create_app():
     from routes.analysis import analysis_bp
     app.register_blueprint(analysis_bp, url_prefix="/api")
 
+    from routes.report import report_bp
+    app.register_blueprint(report_bp, url_prefix="/api")
+
     @app.route("/")
     def home():
         return {

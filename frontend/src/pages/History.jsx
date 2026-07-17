@@ -112,11 +112,17 @@ function History() {
           <p style={{ color: "var(--text-muted)" }}>Loading...</p>
         ) : reviews.length === 0 ? (
           <div style={{
-            padding: "40px", textAlign: "center", color: "var(--text-muted)",
+            padding: "48px", textAlign: "center",
             background: "var(--card)", borderRadius: "12px", border: "1px solid var(--border)",
           }}>
-            <FileCode size={32} style={{ marginBottom: "8px", opacity: 0.5 }} />
-            <p>No reviews found yet.</p>
+            <FileCode size={36} style={{ marginBottom: "12px", opacity: 0.5, color: "var(--text-muted)" }} />
+            <p style={{ color: "var(--text-muted)", marginBottom: "16px" }}>
+              No reviews found yet. Upload your first Python or C file to generate an AI-powered review.
+            </p>
+            <a href="/upload" style={{
+              display: "inline-block", padding: "10px 20px", background: "var(--primary)",
+              borderRadius: "8px", color: "#fff", fontWeight: 500, fontSize: "14px",
+            }}>Upload Code</a>
           </div>
         ) : (
           <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "12px", overflow: "hidden" }}>

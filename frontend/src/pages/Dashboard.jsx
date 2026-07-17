@@ -90,7 +90,7 @@ function Dashboard() {
             )}
           </div>
 
-          <div className="fade-in" style={{
+          <div className="fade-in hover-card " style={{
             background: "var(--card)", border: "1px solid var(--border)",
             borderRadius: "12px", padding: "20px",
           }}>

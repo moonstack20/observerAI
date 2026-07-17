@@ -29,7 +29,7 @@ function Register() {
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "24px" }}>
           <Sparkles size={24} color="var(--primary)" />
-          <h2 style={{ margin: 0 }}>observerAI</h2>
+          <h2 style={{ margin: 0 }}>Observer AI</h2>
         </div>
         <h3 style={{ marginBottom: "4px" }}>Create an account</h3>
         <p style={{ color: "var(--text-muted)", marginTop: 0, fontSize: "14px" }}>Start reviewing your code with AI</p>

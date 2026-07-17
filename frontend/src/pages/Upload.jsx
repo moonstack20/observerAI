@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Layout from "../components/Layout";
 import api from "../services/api";
-import { UploadCloud, FileCode, ClipboardList, ShieldAlert, Puzzle, Wrench, Sparkles, Lightbulb, CheckCircle2 } from "lucide-react";
+import { UploadCloud, FileCode, ClipboardList, ShieldAlert, Puzzle, Wrench, Sparkles, Lightbulb, CheckCircle2, FileDown } from "lucide-react";
 
 const ALLOWED_EXTENSIONS = [".py", ".c", ".h"];
 
@@ -167,14 +167,7 @@ function Upload() {
             <input type="file" accept=".py,.c,.h" onChange={handleFileChange} style={{ display: "none" }} />
           </label>
 
-          {file && (
-            <p style={{ marginTop: "16px" }}>
-              Selected: <strong>{file.name}</strong>{" "}
-              <span style={{
-                background: "var(--primary)", padding: "2px 10px", borderRadius: "999px", fontSize: "12px",
-              }}>{detectLanguageLabel(file.name)}</span>
-            </p>
-          )}
+          {file && <FileSummaryCard file={file} />}
 
           {uploading && <ProgressBar progress={progress} />}
 
@@ -211,13 +204,9 @@ function Upload() {
         <div className="fade-in" style={{ marginTop: "32px", maxWidth: "800px" }}>
           <h3>Analysis Results — {analysis.filename}</h3>
 
-          <div style={{
-            display: "inline-block", padding: "14px 28px", borderRadius: "10px",
-            background: scoreColor(analysis.quality_score), color: "#fff",
-            fontSize: "22px", fontWeight: 700, marginBottom: "20px",
-          }}>
-            Overall Score: {analysis.quality_score} / 10
-          </div>
+          <SummaryBar analysis={analysis} />
+
+          <DownloadButtons reviewId={analysis.id} />
 
           {analysis.language === "python" ? (
             <PythonResults data={analysis.analysis} />
@@ -254,6 +243,31 @@ function ProgressBar({ progress }) {
   );
 }
 
+function FileSummaryCard({ file }) {
+  const [lines, setLines] = useState(null);
+
+  useEffect(() => {
+    file.text().then((text) => setLines(text.split("\n").length));
+  }, [file]);
+
+  const sizeKB = (file.size / 1024).toFixed(1);
+
+  return (
+    <div style={{
+      marginTop: "16px", padding: "14px 18px", background: "var(--bg)",
+      border: "1px solid var(--border)", borderRadius: "10px", textAlign: "left",
+    }}>
+      <p style={{ margin: 0, fontWeight: 600 }}>📄 {file.name}</p>
+      <div style={{ display: "flex", gap: "20px", marginTop: "8px", fontSize: "13px", color: "var(--text-muted)" }}>
+        <span>Language: <strong style={{ color: "var(--text)" }}>{detectLanguageLabel(file.name)}</strong></span>
+        <span>Size: <strong style={{ color: "var(--text)" }}>{sizeKB} KB</strong></span>
+        <span>Lines: <strong style={{ color: "var(--text)" }}>{lines ?? "..."}</strong></span>
+        <span style={{ color: "var(--success)" }}>● Ready</span>
+      </div>
+    </div>
+  );
+}
+
 function AnalyzingIndicator() {
   return (
     <div style={{
@@ -272,26 +286,95 @@ function AnalyzingIndicator() {
 }
 
 function Toast({ toast }) {
-    if (!toast) return null;
-    const isSuccess = toast.type === "success";
-    const accent = isSuccess ? "var(--success)" : "var(--error)";
-    return (
-      <div className="fade-in" style={{
-        position: "fixed", top: "20px", right: "20px", zIndex: 1000,
-        padding: "14px 20px", borderRadius: "10px",
-        background: "#fff",
-        borderLeft: `4px solid ${accent}`,
-        color: "#1E293B", fontWeight: 500, fontSize: "14px",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-      }}>
-        {toast.message}
-      </div>
-    );
-  }
-  
-function MetricCard({ icon: Icon, title, children }) {
+  if (!toast) return null;
+  const isSuccess = toast.type === "success";
+  const accent = isSuccess ? "var(--success)" : "var(--error)";
+  return (
+    <div className="fade-in" style={{
+      position: "fixed", top: "20px", right: "20px", zIndex: 1000,
+      padding: "14px 20px", borderRadius: "10px",
+      background: "#fff",
+      borderLeft: `4px solid ${accent}`,
+      color: "#1E293B", fontWeight: 500, fontSize: "14px",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+    }}>
+      {toast.message}
+    </div>
+  );
+}
+
+function SummaryBar({ analysis }) {
+  const ai = analysis.analysis.ai_review;
+  const highCount = ai && !ai.error
+    ? Object.values(ai).filter(Array.isArray).flat().filter(i => i.severity === "high").length
+    : 0;
+  const warningCount = ai && !ai.error
+    ? Object.values(ai).filter(Array.isArray).flat().filter(i => i.severity === "medium" || i.severity === "low").length
+    : 0;
+  const verdict = analysis.quality_score >= 8 ? "Good" : analysis.quality_score >= 5 ? "Needs Improvement" : "Poor";
+
   return (
     <div style={{
+      display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "16px",
+    }}>
+      <SummaryStat label="Overall Score" value={`${analysis.quality_score} / 10`} color={scoreColor(analysis.quality_score)} />
+      <SummaryStat label="High Issues" value={highCount} color="var(--error)" />
+      <SummaryStat label="Warnings" value={warningCount} color="var(--warning)" />
+      <SummaryStat label="AI Verdict" value={verdict} color="var(--primary)" />
+    </div>
+  );
+}
+
+function SummaryStat({ label, value, color }) {
+  return (
+    <div style={{
+      background: "var(--card)", border: `1px solid ${color}`, borderRadius: "12px",
+      padding: "16px", textAlign: "center",
+    }}>
+      <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)" }}>{label}</p>
+      <p style={{ margin: "6px 0 0 0", fontSize: "20px", fontWeight: 700, color }}>{value}</p>
+    </div>
+  );
+}
+
+function DownloadButtons({ reviewId }) {
+  const download = async (type) => {
+    const token = localStorage.getItem("token");
+    const res = await api.get(`/report/${reviewId}/${type}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      responseType: "blob",
+    });
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `report.${type === "pdf" ? "pdf" : "md"}`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  return (
+    <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+      <button onClick={() => download("pdf")} style={downloadBtn}>
+        <FileDown size={14} style={{ marginRight: "6px", verticalAlign: "middle" }} />
+        Download PDF
+      </button>
+      <button onClick={() => download("markdown")} style={downloadBtn}>
+        <FileDown size={14} style={{ marginRight: "6px", verticalAlign: "middle" }} />
+        Download Markdown
+      </button>
+    </div>
+  );
+}
+
+const downloadBtn = {
+  padding: "8px 16px", background: "var(--card)", border: "1px solid var(--border)",
+  borderRadius: "8px", color: "var(--text)", fontSize: "13px", fontWeight: 500,
+};
+
+function MetricCard({ icon: Icon, title, children }) {
+  return (
+    <div className="hover-card" style={{
       background: "var(--card)", border: "1px solid var(--border)", borderRadius: "12px", padding: "18px",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
