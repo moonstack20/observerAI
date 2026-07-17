@@ -50,10 +50,18 @@ def get_ai_review(code, language):
         )
         text = response.text.strip()
 
+        # Strip markdown code fences if present
         if text.startswith("```"):
             text = text.strip("`")
-            if text.startswith("json"):
+            if text.lower().startswith("json"):
                 text = text[4:]
+            text = text.strip()
+
+        # Extract the first {...} JSON object in case there's extra text around it
+        start = text.find("{")
+        end = text.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            text = text[start:end + 1]
 
         result = json.loads(text)
         return result
