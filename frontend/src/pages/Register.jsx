@@ -20,6 +20,8 @@ function Register() {
   };
   const allValid = Object.values(checks).every(Boolean);
 
+  const [loading, setLoading] = useState(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -29,11 +31,14 @@ function Register() {
       return;
     }
 
+    setLoading(true);
     try {
       await api.post("/auth/register", { name, email, password });
       navigate("/login");
     } catch (err) {
       setError(err.response?.data?.error || "Something went wrong");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -98,8 +103,8 @@ function Register() {
             </div>
           )}
 
-          <button type="submit" disabled={!allValid} style={{ ...btnStyle, opacity: allValid ? 1 : 0.5, cursor: allValid ? "pointer" : "not-allowed" }}>
-            Register
+<button type="submit" disabled={!allValid || loading} style={{ ...btnStyle, opacity: (allValid && !loading) ? 1 : 0.5, cursor: (allValid && !loading) ? "pointer" : "not-allowed" }}>
+            {loading ? "Creating account..." : "Register"}
           </button>
         </form>
         <p style={{ fontSize: "14px", color: "var(--text-muted)", marginTop: "16px" }}>

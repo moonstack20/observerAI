@@ -9,9 +9,12 @@ function Login() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
+  const [loading, setLoading] = useState(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
     try {
       const res = await api.post("/auth/login", { email, password });
       localStorage.setItem("token", res.data.access_token);
@@ -19,8 +22,11 @@ function Login() {
       navigate("/dashboard");
     } catch (err) {
       setError(err.response?.data?.error || "Something went wrong");
+    } finally {
+      setLoading(false);
     }
   };
+
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", background: "var(--bg)" }}>
@@ -57,7 +63,9 @@ function Login() {
           <form onSubmit={handleSubmit}>
             <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required style={inputStyle} />
             <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required style={inputStyle} />
-            <button type="submit" style={btnStyle}>Log In</button>
+            <button type="submit" disabled={loading} style={{ ...btnStyle, opacity: loading ? 0.7 : 1 }}>
+            {loading ? "Logging in..." : "Log In"}
+          </button>
           </form>
           <p style={{ fontSize: "14px", color: "var(--text-muted)", marginTop: "16px" }}>
             Don't have an account? <Link to="/register" style={{ color: "var(--primary)" }}>Register</Link>
