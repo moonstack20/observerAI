@@ -1,5 +1,7 @@
 import json
+import time
 from google import genai
+from google.genai import errors as genai_errors
 from config import Config
 
 client = genai.Client(api_key=Config.GEMINI_API_KEY)
@@ -38,16 +40,42 @@ Code to review:
 {code}
 """
 
+# Try the fast model first, fall back to this if it's overloaded
+FALLBACK_MODEL = "gemini-2.0-flash"
+
+
+def _call_gemini(prompt, model, max_retries=3):
+    """Call Gemini with exponential backoff on 503/overload errors."""
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model=model,
+                contents=prompt,
+            )
+            return response
+        except genai_errors.ServerError as e:
+            last_error = e
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)  # 1s, 2s, 4s
+        except Exception as e:
+            # Non-server errors (bad request, auth, etc) shouldn't be retried
+            raise
+    raise last_error
+
 
 def get_ai_review(code, language):
     prompt_template = PYTHON_PROMPT if language == "python" else C_PROMPT
     prompt = prompt_template.format(code=code)
+    text = ""
 
     try:
-        response = client.models.generate_content(
-            model="gemini-flash-latest",
-            contents=prompt,
-        )
+        try:
+            response = _call_gemini(prompt, "gemini-flash-latest")
+        except genai_errors.ServerError:
+            # Primary model overloaded after retries — try fallback model once
+            response = _call_gemini(prompt, FALLBACK_MODEL, max_retries=1)
+
         text = response.text.strip()
 
         # Strip markdown code fences if present
@@ -68,6 +96,7 @@ def get_ai_review(code, language):
 
     except json.JSONDecodeError:
         return {"error": "AI response could not be parsed", "raw": text}
+    except genai_errors.ServerError as e:
+        return {"error": f"AI review temporarily unavailable — Gemini is overloaded. Please try again in a moment. ({str(e)})"}
     except Exception as e:
         return {"error": f"AI review failed: {str(e)}"}
-    
